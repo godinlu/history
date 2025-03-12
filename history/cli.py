@@ -7,6 +7,7 @@ Author: Luc Godin
 import click
 import os
 import tomlkit
+import copy
 
 from .downloader import download_dataset, extract_scenes, ConfigError
 from .settings import *
@@ -25,26 +26,23 @@ def create_project_worker(name: str) -> None:
     
     os.mkdir(folder)
 
-    default_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), DEFAULT_CONFIG)
     config_file = os.path.join(folder, CONFIG_NAME)
+    copy_config = copy.deepcopy(DEFAULT_CONFIG)
 
-    # open the default config
-    with open(default_config_file, "rb") as file:
-        toml_config = tomlkit.load(file)
 
     # update the config
-    toml_config["name"] = name
-    toml_config["path"]["original_scenes"] = os.path.join(folder, ORIGINAL_SCENES)
-    toml_config["path"]["final_dems"] = os.path.join(folder, FINAL_DEMS)
-    toml_config["path"]["tgz_scenes"] = os.path.join(folder, TGZ_SCENES)
+    copy_config["name"] = name
+    copy_config["path"]["original_scenes"] = os.path.join(folder, ORIGINAL_SCENES)
+    copy_config["path"]["final_dems"] = os.path.join(folder, FINAL_DEMS)
+    copy_config["path"]["tgz_scenes"] = os.path.join(folder, TGZ_SCENES)
 
-    os.mkdir(toml_config["path"]["original_scenes"])
-    os.mkdir(toml_config["path"]["final_dems"])
-    os.mkdir(toml_config["path"]["tgz_scenes"])
+    os.mkdir(copy_config["path"]["original_scenes"])
+    os.mkdir(copy_config["path"]["final_dems"])
+    os.mkdir(copy_config["path"]["tgz_scenes"])
 
     # save it into the config_file path
     with open(config_file, "w", encoding="utf-8") as file:
-        file.write(tomlkit.dumps(toml_config))
+        file.write(tomlkit.dumps(copy_config))
 
     return folder
 
