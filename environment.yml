@@ -1,0 +1,10 @@
+name: history
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - tomlkit
+  - click
+  - pip
+  - pip :
+    - usgsxplore

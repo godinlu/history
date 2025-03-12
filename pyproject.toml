@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "history"
+version = "0.0.1"
+authors = [
+  { name="Godin Luc", email="godin.luc2002@gmail.com" },
+  { name="Dehecq Amaury", email="this-is-not-an-email@a.com" }
+]
+description = "Historical Images for Surface TOpography Reconstruction over the last 50 Years"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "usgsxplore",
+    "tomlkit",
+    "click"
+]
+
+[project.urls]
+Homepage = "https://github.com/godinlu/history"
+Issues = "https://github.com/godinlu/history/issues"
+
+[tool.setuptools]
+packages = ["history",]
+
+[project.scripts]
+history-create = "history.cli:create_project"
+history-download = "history.cli:download"
+history-extract = "history.cli:extract"
