@@ -34,3 +34,5 @@ packages = ["history",]
 history-create = "history.cli:create_project"
 history-download = "history.cli:download"
 history-extract = "history.cli:extract"
+history-aspy = "history.aspy.cli:aspy"
+history-spymicmac = "history.spymicmac.cli:spymicmac"
