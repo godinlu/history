@@ -35,14 +35,14 @@ def fill_aspy_config(history_config: tomlkit.TOMLDocument) -> tomlkit.TOMLDocume
 
     aspy_config["IDfile"] = os.path.join(aspy_folder, "scenes_id.txt")
     aspy_config["outDir"] = os.path.join(aspy_folder, "output")
-    aspy_config["dataDir"] = history_config["path"]["original_scenes"]
+    aspy_config["dataDir"] = os.path.abspath(history_config["path"]["original_scenes"]) 
     aspy_config["browse_path"] = os.path.join(aspy_folder, "browse")
     aspy_config["metadata_file"] = os.path.join(aspy_folder, "metadata.gpkg")
 
     with open(aspy_config_path, "w", encoding="utf-8") as file:
         file.write(tomlkit.dumps(aspy_config))
 
-    click.echo(f"update aspy config at '{os.path.abspath(aspy_config_path)}' successful.'")
+    click.echo(f"update aspy config at '{os.path.abspath(aspy_config_path)}' : {BOLD}{GREEN}SUCCESS{RESET}'")
 
     return aspy_config
 
@@ -85,7 +85,7 @@ def dl_aspy_files(history_config: tomlkit.TOMLDocument, aspy_config: tomlkit.TOM
     click.echo(f"Downloading browse images at '{aspy_config['browse_path']}' : ")
     dl_browse_cmd = ["usgsxplore", "download-browse", aspy_config["metadata_file"], "--output-dir", aspy_config["browse_path"]]
     subprocess.check_call(dl_browse_cmd)
-    click.echo(f"{BOLD}{GREEN}SUCCESS{RESET}")
+    click.echo(f"Downloading browse images at '{aspy_config['browse_path']}' : {BOLD}{GREEN}SUCCESS{RESET}\n")
 
 #------------------------------------------------------------------------------------------------------
 #                                       CLI PART
@@ -98,9 +98,7 @@ def aspy():
 
 @click.command("create")
 def create_aspy_project() -> None:
-    """
-    
-    """
+    """ Create the scaffold for the KH9 MC preprocessing """
     # the first step is too open the config 
     try:
         config = Config()
@@ -117,7 +115,8 @@ def create_aspy_project() -> None:
     # TODO
 
     # create the config file of aspy in the aspy directory
-    # TODO
+    cli_command = ["aspy-config", "create", "--config-name", "aspy-config"]
+    subprocess.run(["conda", "run", "-n", "aspy"] + cli_command, check=True, cwd="aspy")
 
     # fill up the aspy config file
     aspy_config = fill_aspy_config(config)
@@ -125,5 +124,28 @@ def create_aspy_project() -> None:
     # create the ids_text_file, the metadata_file and download browse_path
     dl_aspy_files(config, aspy_config)
 
+    click.echo(f"To start the aspy preprocessing run :\n {BLUE}cd aspy\nconda activate aspy\naspy-preproc aspy-config.toml{RESET}")
+
+
+@click.command("run")
+def run_aspy_preproc() -> None:
+    """ Run the preprocessing of aspy """
+    # the first step is too open the config just to verifiy
+    try:
+        Config()
+    except ConfigError as e:
+        click.echo(f"\n {BOLD}{RED}Error:{RESET} {e}\n")
+        return
+    
+    aspy_config_file = os.path.join("aspy", "aspy-config.toml")
+    if not os.path.exists(aspy_config_file):
+        click.echo(f"\n {BOLD}{RED}Error:{RESET} aspy project not found, please run {BOLD}histo aspy create{RESET} first.\n")
+
+    # run the aspy-preproc command 
+    cli_command = ["aspy-preproc", "aspy-config.toml"]
+    subprocess.run(["conda", "run", "-n", "aspy"] + cli_command, check=True, cwd="aspy", capture_output=False)
+    
+
 
 aspy.add_command(create_aspy_project)
+aspy.add_command(run_aspy_preproc)

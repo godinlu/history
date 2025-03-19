@@ -14,6 +14,7 @@ from usgsxplore.api import API
 from usgsxplore.filter import SceneFilter
 
 from .config import Config, ConfigError
+from .aspy.cli import aspy
 
 GREEN = "\033[92m"
 RED = "\033[91m"
@@ -21,10 +22,15 @@ BLUE = "\033[94m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
 
-@click.command()
+
+@click.group()
+def history():
+    """ CLI of history """
+
+@click.command("create")
 @click.argument("name")
 def create_project(name: str):
-    """ Create a project """
+    """ Create a history project """
     try:
         Config.create_project(name)
         project_location = os.path.abspath(f"./{name}")
@@ -42,9 +48,9 @@ def create_project(name: str):
         click.echo(f"\n {BOLD}{RED}Error:{RESET} {e}\n")
 
 
-@click.command()
+@click.command("download")
 @click.argument("dataset", type=click.Choice(["pc", "mc"], case_sensitive=False))
-def download(dataset: str) -> None:
+def download_dataset(dataset: str) -> None:
     """Download the dataset"""
     # first thing first get and check the config
     try:
@@ -81,13 +87,13 @@ def download(dataset: str) -> None:
     api.logout()
     
     
-@click.command()
+@click.command("extract")
 @click.option(
     "--keep-tgz",
     is_flag=True,
     help="Keep tgz scenes after extract",
 )
-def extract(keep_tgz: bool) -> None:
+def extract_scenes(keep_tgz: bool) -> None:
     """ Extract scenes into the original-scenes folder """
     try:
         config = Config()
@@ -116,9 +122,15 @@ def extract(keep_tgz: bool) -> None:
             if file_name.endswith(".tgz"):
                 file_path = os.path.join(config["path"]["tgz_scenes"], file_name)
                 click.echo(f"Removing : {file_name}")
-                os.remove(file_name)
+                os.remove(file_path)
 
         click.echo(f"\n{GREEN}{BOLD} Remove tgz-scenes complete !\n{RESET}")
+
+
+history.add_command(create_project)
+history.add_command(download_dataset)
+history.add_command(extract_scenes)
+history.add_command(aspy)
 
 if __name__ == "__main__":
     create_project()
