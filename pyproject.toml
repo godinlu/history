@@ -28,7 +28,7 @@ Homepage = "https://github.com/godinlu/history"
 Issues = "https://github.com/godinlu/history/issues"
 
 [tool.setuptools]
-packages = ["history",]
+package-dir = {"" = "src"}
 
-[project.scripts]
-histo = "history.cli:history"
+[tool.setuptools.packages.find]
+where = ["src"]

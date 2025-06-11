@@ -8,3 +8,4 @@ dependencies:
   - pip
   - pip :
     - usgsxplore
+    - git+https://github.com/shippp/hipp.git@aerial
