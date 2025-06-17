@@ -5,6 +5,8 @@ from hipp.tools import points_picker
 from hipp.image import read_image_block_grayscale
 import pandas as pd
 from collections import defaultdict
+import pyvips
+import math
 
 
 def join_images(images_directory: str, output_directory: str, overwrite: bool = False, threads: int = 0) -> None:
@@ -118,6 +120,112 @@ def clicking_on_corner(images_directory: str, csv_file: str) -> None:
         df_out.to_csv(csv_file, index=False)
 
 
-        
+def crop_images(images_directory: str, csv_file: str, output_directory: str, overwrite: bool = False) -> None:
+    """
+    Crop and rotate .tif images based on coordinates provided in a CSV file.
+
+    For each image in the input directory, this function looks up its corresponding
+    cropping points in the CSV file, rotates the image to align the top edge,
+    crops it accordingly, and saves the result in the output directory.
+
+    Args:
+        images_directory (str): Path to the directory containing input .tif images.
+        csv_file (str): Path to the CSV file containing image IDs and cropping coordinates.
+                        The CSV must have an 'image_id' index and columns for each corner point:
+                        top_left_x, top_left_y, top_right_x, top_right_y, etc.
+        output_directory (str): Directory to save the cropped and rotated images.
+        overwrite (bool, optional): If False, skip images whose output already exists. Defaults to False.
+    """
+    # Load the CSV into a DataFrame indexed by image_id
+    df = pd.read_csv(csv_file, index_col="image_id")
+
+    os.makedirs(output_directory, exist_ok=True)
+
+    for filename in os.listdir(images_directory):
+        if filename.endswith(".tif"):
+            image_id = filename.replace(".tif", "")
+            input_path = os.path.join(images_directory, filename)
+            output_path = os.path.join(output_directory, filename)
+
+            # Skip if output already exists and overwrite is disabled
+            if os.path.exists(output_path) and not overwrite:
+                print(f"[{image_id}] Skipped: output already exists at '{output_path}'")
+                continue
+
+            # Skip if image_id is not in the CSV
+            if image_id not in df.index:
+                print(f"[{image_id}] No cropping points found in CSV. Please update '{csv_file}'")
+                continue
+
+            # Retrieve the four corner points from the CSV and convert to int
+            row = df.loc[image_id]
+            points = [
+                (int(row["top_left_x"]), int(row["top_left_y"])),
+                (int(row["top_right_x"]), int(row["top_right_y"])),
+                (int(row["bottom_right_x"]), int(row["bottom_right_y"])),
+                (int(row["bottom_left_x"]), int(row["bottom_left_y"]))
+            ]
+
+            # Print cropping info and perform cropping + rotation
+            print(f"[{image_id}] Found cropping points: {points}")
+            print(f"[{image_id}] Cropping and rotating '{input_path}' -> '{output_path}'")
+            rotate_and_crop_from_interest_points(input_path, output_path, points)
+            print(f"[{image_id}] Done.\n")
+
+
+def rotate_and_crop_from_interest_points(input_path: str, output_path: str, points: list[tuple[float, float]]) -> None:
+    angle = angle_from_points(*points[0], *points[1])
+    print(f"Rotation angle (degrees): {-angle:.4f}")
+
+    # Load image with sequential access (streaming)
+    image = pyvips.Image.new_from_file(input_path, access='sequential')
+
+    # Rotate image by negative angle to align ROI horizontally
+    rotated = image.rotate(-angle * math.pi / 180)
+
+    # To rotate points properly, take center of rotation as image center
+    cx, cy = image.width / 2, image.height / 2
+    rotated_points = [rotate_point(x, y, -angle, cx, cy) for (x,y) in points]
+
+    # Get bounding rectangle of rotated points
+    left, top, width, height = bounding_rect(rotated_points)
+    print(f"Cropping rectangle on rotated image: left={left}, top={top}, width={width}, height={height}")
+
+    # Crop the rotated image
+    cropped = rotated.crop(left, top, width, height)
+
+    # Save the result
+    cropped.write_to_file(output_path)
+    print(f"Saved cropped rotated image to {output_path}")
+
+
+def angle_from_points(x1, y1, x2, y2):
+    """Calculate angle in degrees between two points relative to horizontal axis"""
+    dx = x2 - x1
+    dy = y2 - y1
+    angle_rad = math.atan2(dy, dx)
+    return math.degrees(angle_rad)
+
+def bounding_rect(points):
+    """Get bounding rectangle (left, top, width, height) from list of (x,y) points"""
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    left = int(min(xs))
+    top = int(min(ys))
+    width = int(max(xs)) - left
+    height = int(max(ys)) - top
+    return left, top, width, height
+
+def rotate_point(x, y, angle_deg, cx=0, cy=0):
+    """Rotate a point (x,y) around center (cx,cy) by angle_deg degrees"""
+    angle_rad = math.radians(angle_deg)
+    x_shifted = x - cx
+    y_shifted = y - cy
+    xr = x_shifted * math.cos(angle_rad) - y_shifted * math.sin(angle_rad)
+    yr = x_shifted * math.sin(angle_rad) + y_shifted * math.cos(angle_rad)
+    return xr + cx, yr + cy
+
+
+
         
 

@@ -5,6 +5,7 @@ dependencies:
   - python=3.11
   - tomlkit
   - click
+  - pyvips
   - pip
   - pip :
     - usgsxplore
